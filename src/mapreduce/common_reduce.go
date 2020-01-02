@@ -1,5 +1,19 @@
 package mapreduce
 
+import (
+	"os"
+	"encoding/json"
+	"sort"
+)
+
+// for sorting by key.
+type ByKey []KeyValue
+
+// for sorting by key.
+func (a ByKey) Len() int           { return len(a) }
+func (a ByKey) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByKey) Less(i, j int) bool { return a[i].Key < a[j].Key }
+
 func doReduce(
 	jobName string, // the name of the whole MapReduce job
 	reduceTask int, // which reduce task this is
@@ -44,4 +58,54 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+
+	// reads the intermediate files for the task
+	
+	intermediate := []KeyValue{}
+	for i := 0; i < nMap; i++ {
+		inFilename := reduceName(jobName, i, reduceTask) 
+		file, err := os.Open(inFilename)
+		if err != nil {
+			debug("cannot open %v", inFilename)
+		}
+		dec := json.NewDecoder(file)
+		for {
+			var kv KeyValue
+			if err := dec.Decode(&kv); err != nil {
+				break
+			}
+			intermediate = append(intermediate, kv)
+		}
+		file.Close()
+	}
+
+	// sorts the intermediate key/value pairs by key,
+	sort.Sort(ByKey(intermediate))
+
+	// calls the user-defined reduce function for each key and writes output to 
+	// disk
+	output := []KeyValue{}
+	i := 0 
+	for i < len(intermediate) {
+		j := i + 1
+		for j < len(intermediate) && intermediate[j].Key == intermediate[i].Key {
+			j++
+		}
+		values := []string{}
+		for k := i; k < j; k++ {
+			values = append(values, intermediate[k].Value)
+		}
+		key := intermediate[i].Key
+		output = append(output, KeyValue{key, reduceF(key, values)})
+
+		i = j
+	}
+
+	outFilename := mergeName(jobName, reduceTask)
+	file, _ := os.Create(outFilename)
+	enc := json.NewEncoder(file)
+	for _, o := range output {
+		enc.Encode(o)
+	}
+	file.Close()
 }

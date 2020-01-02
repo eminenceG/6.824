@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"mapreduce"
 	"os"
+	"unicode"
+	"strings"
+	"strconv"
 )
 
 //
@@ -15,6 +18,19 @@ import (
 //
 func mapF(filename string, contents string) []mapreduce.KeyValue {
 	// Your code here (Part II).
+
+	// function to detect word separators
+	ff := func(r rune) bool { return !unicode.IsLetter(r) }
+
+	// split contents into an array of words
+	words := strings.FieldsFunc(contents, ff)
+
+	kva := []mapreduce.KeyValue{}
+	for _, w := range words {
+		kv := mapreduce.KeyValue{w, "1"}
+		kva = append(kva, kv)
+	}
+	return kva 
 }
 
 //
@@ -24,6 +40,7 @@ func mapF(filename string, contents string) []mapreduce.KeyValue {
 //
 func reduceF(key string, values []string) string {
 	// Your code here (Part II).
+	return strconv.Itoa(len(values))
 }
 
 // Can be run in 3 ways:

@@ -34,10 +34,10 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	var done sync.WaitGroup
 	for i, file := range mapFiles {
 		done.Add(1)
-		worker := <- registerChan
 		go func(file string, taskNumber int) {
 			// Tells a worker to excute a task by sending a Worker.DoTask RPC to the 
 			// worker.
+
 			args := DoTaskArgs{
 				jobName,
 				file,
@@ -45,10 +45,16 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 				taskNumber, 
 				n_other,
 			}
-			call(worker, "Worker.DoTask", args, nil)
+
+			finished := false 
+			worker := ""
+			for !finished {
+	   	  worker = <- registerChan
+			  finished = call(worker, "Worker.DoTask", args, nil)
+			}
 			done.Done()
-			// re-register the worker after the task is finished
 			registerChan <- worker
+			// re-register the worker after the task is finished
 		}(file, i)
 	}
 	// waits until all tasks have completed  

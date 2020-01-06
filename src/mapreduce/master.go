@@ -85,11 +85,13 @@ func Sequential(jobName string, files []string, nreduce int,
 func (mr *Master) forwardRegistrations(ch chan string) {
 	i := 0
 	for {
+		// Why do we need to lock here?
 		mr.Lock()
+
 		if len(mr.workers) > i {
 			// there's a worker that we haven't told schedule() about.
 			w := mr.workers[i]
-			go func() { ch <- w }() // send without holding the lock.
+			go func() { ch <- w }() // send without holding the lock. // what does this mean?
 			i = i + 1
 		} else {
 			// wait for Register() to add an entry to workers[]
